@@ -3,6 +3,8 @@ PSD Image module.
 """
 from __future__ import absolute_import, unicode_literals
 import logging
+from typing import Dict, Union, List
+import numpy as np
 
 from psd_tools.constants import (
     Clipping, Compression, ColorMode, SectionDivider, Resource, Tag
@@ -12,11 +14,15 @@ from psd_tools.api.layers import (
     Artboard, Group, PixelLayer, ShapeLayer, SmartObjectLayer, TypeLayer,
     GroupMixin, FillLayer
 )
+from psd_tools.psd.layer_and_mask import (ChannelData, ChannelInfo, LayerRecord)
+from psd_tools.psd.tagged_blocks import (DescriptorBlock, MetadataSetting, TaggedBlocks)
 from psd_tools.api import adjustments
 from psd_tools.api import deprecated
+from psd_tools.api.numpy_io import convert_to_bytes_from_numpy
+from psd_tools.utils import updateConfig
+
 
 logger = logging.getLogger(__name__)
-
 
 class PSDImage(GroupMixin):
     """
@@ -40,6 +46,48 @@ class PSDImage(GroupMixin):
         self._layers = []
         self._tagged_blocks = None
         self._init()
+
+    def buildFromConfigure(self,
+                        images_tree : Dict[str, Union[Dict, np.ndarray]],
+                        configs : Dict[str, Union[Dict, str, int]]) -> None :
+        #TODO. @OFF.Donald
+        '''
+        format of configs :
+            {
+                'commons' : {
+                    #CONTENTS
+                }
+                'layers' : {
+                    'sub_value1':{
+                        'configs' : {
+                            #CONTENTS
+                        }
+                    },
+                    'sub_value2':{
+                        'configs' : {
+                            #CONTENTS
+                        }
+                    }
+                }
+            }
+        '''
+        commons_configs, layers_configs = configs['commons'], configs['layers']
+        layer_stack = [(self, {sub:images_tree[sub]}, {sub:layers_configs[sub]}) for sub in images_tree]
+        parent = self
+
+        while(layer_stack):
+            parent, subtree, sub_configs = layer_stack.pop()
+            for layer_name, layer_item in subtree.items():
+                is_group = True if type(layer_item) is dict else False
+                config = updateConfig(commons=commons_configs,
+                                        configs=  sub_configs[layer_name].pop('configs'))
+                new_layer = buildLayer(configs  = config,
+                                        images  = None if is_group else layer_item,
+                                        psd     = self,
+                                        parent  = parent)
+                parent._layers.append(new_layer)
+                if is_group : 
+                    layer_stack.append((new_layer, layer_item, sub_configs[layer_name]))
 
     @classmethod
     def new(cls, mode, size, color=0, depth=8, **kwargs):
@@ -607,3 +655,77 @@ class PSDImage(GroupMixin):
 
         if clip_stack and last_layer:
             last_layer._clip_layers = clip_stack
+
+
+
+def buildTaggedBlock(tag_configs) -> TaggedBlocks :
+    #TODO : @OFF.Donald
+    '''
+    
+    '''
+    #FIXME @Donald. 
+    metadata_setting = tag_configs.pop('METADATA_SETTING')
+    #TODO: @Donald metadata support not yet
+    metadata_setting_list = []
+    for metadata_setting in metadata_setting:
+        metasetting_data = metadata_setting['data']
+        metadata_setting['data'] = DescriptorBlock(classID=metasetting_data['class_id'],
+                                                    items=metasetting_data['items'])
+        _metadata = MetadataSetting(**metadata_setting)
+        metadata_setting_list.append(_metadata)
+    tag_configs['METADATA_SETTING'] = metadata_setting_list
+    tagged_blocks = TaggedBlocks()
+    for tag_name, args in tag_configs.items():
+        key = getattr(Tag, tag_name)
+        if type(args) is dict :
+            tagged_blocks.set_data(key, **args)
+        else :
+            tagged_blocks.set_data(key, args)
+    return tagged_blocks
+
+def buildRecord(configs ,
+                channel_data,
+                channel_types = [0, 1, 2, -1]) -> LayerRecord:
+    '''
+    '''
+    #TODO: @OFF.Donald
+    #BYTES_TYPE_LIST = ['blendMode']
+    #for _type in BYTES_TYPE_LIST:
+    #    configs[_type] = bytes(configs[_type], 'utf-8')
+    tagged_blocks_args = configs.pop('tagged_blocks')
+    channel_lens = [len(i.data) for i in channel_data]
+    channel_info = [ChannelInfo(id, data_len) for id, data_len in zip(channel_types, channel_lens)]
+    configs['channel_info'] = channel_info
+    configs['tagged_blocks'] = buildTaggedBlock(tagged_blocks_args)
+    return LayerRecord(**configs)
+
+
+def buildChannelData(image ,
+                    compression_type : int = 1 ) -> List[ChannelData]:
+    #TODO: @OFF.Donald
+    '''
+    '''
+    channel_data_list = []
+    for idx in range(image.shape[-1]) :
+        bytes_images = convert_to_bytes_from_numpy(image[:,:,idx])
+        channel_data = ChannelData(compression_type, bytes_images)
+        channel_data_list.append(channel_data)
+    return channel_data_list
+
+
+def buildLayer(configs : Dict,
+                images : List,
+                psd ,
+                parent ,
+                compression_type : int = 1,
+                default_num_image_channel : int = 4,
+                ) -> Union[PixelLayer, Group]:
+    #TODO: @OFF.Donald
+    '''
+    '''
+    generateNoneImage = lambda  : [ChannelData(compression=compression_type) for _ in range(default_num_image_channel)]
+    channel_data = buildChannelData(images, compression_type=compression_type) if images is not None else generateNoneImage()
+    tlayer = PixelLayer if images is not None else Group
+    record = buildRecord(configs, channel_data)
+    layer = tlayer(psd, record, channel_data, parent)
+    return layer
