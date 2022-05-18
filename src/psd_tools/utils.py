@@ -6,6 +6,8 @@ import logging
 import sys
 import struct
 import array
+from typing import Dict
+from copy import deepcopy
 
 try:
     unichr = unichr
@@ -13,7 +15,34 @@ except NameError:
     unichr = chr
 
 logger = logging.getLogger(__name__)
+'''
+CONFIGURE_PAIR = {
+    'top'       : int,
+    'left'      : int,
+    'bottom'    : int,
+    'right'     : int,
+    'channel_info' : List[] 
+}
 
+def validateConfigure(configs : Dict[str, str]):
+    
+    return 
+'''
+
+def updateConfig(commons : Dict,
+                 configs: Dict) -> Dict:
+    #TODO @OFF.Donald
+    _commons = deepcopy(commons)
+
+    tagged_blocks_configs = configs.pop('tagged_blocks') if 'tagged_blocks' in configs else {}
+    metadata_setting_configs =  tagged_blocks_configs.pop('METADATA_SETTING') if 'METADATA_SETTING' in tagged_blocks_configs else {}
+    for key, item in configs.items():
+        _commons[key] = item
+    for key, item in tagged_blocks_configs.items():
+        _commons['tagged_blocks'][key] = item
+    _commons['tagged_blocks']['METADATA_SETTING'] = metadata_setting_configs
+    return _commons             
+    
 
 def pack(fmt, *args):
     fmt = str(">" + fmt)

@@ -809,3 +809,4 @@ class UserMask(BaseElement):
         written = self.color.write(fp)
         written += write_fmt(fp, 'HBx', self.opacity, self.flag)
         return written
+        

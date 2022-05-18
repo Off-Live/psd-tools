@@ -1,6 +1,47 @@
 psd-tools
 =========
 
+Updated by OFF LIVE.
+---------
+ORGANIZING DOCUMENTS @OFF.Donald
+
+New Function : generate PSDImage
+Now, PSDImage class can be generated from configures and images
+format of configures :
+.. code-block:: python
+    configs = {
+        'commons' : {
+            '''
+            Keyword and value pair that will be included in 'LayerRecord'
+            plz refer to docs about LayerRecord
+            - Example
+                'top' : 1,
+                'opacity' : 0
+            '''
+            },
+        'layers' : {
+            '''
+            Keyword and value pair that will be included in 'LayerRecord'
+            plz refer to docs about LayerRecord
+            - Example
+                'Mouse' : {
+                        'configs' : {
+                            ...
+                        },
+                        'Smile' : {
+                            ...
+                        },
+                        ...
+                    }
+            '''
+            }
+        }
+
+
+TODO List :
+* there are so many argument about Photoshop system. 
+
+----------
 ``psd-tools`` is a Python package for working with Adobe Photoshop PSD files
 as described in specification_.
 

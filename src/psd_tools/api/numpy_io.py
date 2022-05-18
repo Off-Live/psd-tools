@@ -16,6 +16,13 @@ EXPECTED_CHANNELS = {
     ColorMode.LAB: 3,
 }
 
+def convert_to_bytes_from_numpy(image : np.ndarray) -> bytes:
+    '''
+    @dev. 
+        - image should be np.ndarray that it's value range is from 0. to 1. (normalized)
+    '''
+    return (image.ravel()*255).astype(np.uint8).tobytes()
+
 
 def get_array(layer, channel, **kwargs):
     if layer.kind == 'psdimage':
