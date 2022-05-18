@@ -71,6 +71,8 @@ class PSDImage(GroupMixin):
                 }
             }
         '''
+        if len(self._layers) != 0 : 
+            raise(Exception("There are already builted layers, please reset layers first"))
         commons_configs, layers_configs = configs['commons'], configs['layers']
         layer_stack = [(self, {sub:images_tree[sub]}, {sub:layers_configs[sub]}) for sub in images_tree]
         parent = self
@@ -88,6 +90,13 @@ class PSDImage(GroupMixin):
                 parent._layers.append(new_layer)
                 if is_group : 
                     layer_stack.append((new_layer, layer_item, sub_configs[layer_name]))
+
+    def resetLayers(self) -> None:
+        '''
+        Remove all of layers
+        '''
+        self._layers = []
+        return 
 
     @classmethod
     def new(cls, mode, size, color=0, depth=8, **kwargs):
